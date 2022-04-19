@@ -1,4 +1,4 @@
-# Prometheus JFR Exporter [![Build Status](https://travis-ci.org/tabjy/prometheus-jfr-exporter.svg?branch=master)](https://travis-ci.org/tabjy/prometheus-jfr-exporter)
+# Prometheus JFR Exporter
 
 a collector that scrapes JFR events from a JVM target at runtime for Prometheus to use
 
