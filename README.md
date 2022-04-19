@@ -47,7 +47,7 @@ JFR Prometheus Exporter accesses recordings using JMX connections. Before runnin
 ### Usage
 
 ```sh
-$ java -jar ./prometheus-jfr-exporter-1.0-SNAPSHOT-all.jar --help
+$ java -jar ./prometheus-jfr-exporter-0.0.1-SNAPSHOT-all.jar --help
 Usage: prometheus-jfr-exporter [options]
   Options:
     --destination
