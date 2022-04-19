@@ -101,7 +101,6 @@ public class ServiceFactoryConfig implements IConfigurationElement {
 		return true;
 	}
 
-	@Override
 	public int getHandleId() {
 		return 0;
 	}

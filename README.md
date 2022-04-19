@@ -47,22 +47,43 @@ JFR Prometheus Exporter accesses recordings using JMX connections. Before runnin
 ### Usage
 
 ```sh
-$ java -jar ./prometheus-jfr-exporter-1.0-SNAPSHOT-all.jar -h
-Usage of Prometheus JFR exporter:
-  program <[jmxHostname]:[jmxPort]> [[httpHostname]:[httpPort]] [option...]
-
-Options:
-  -eventConfiguration <path>  a location where a .jfc configuration can be found
-  -disk [bool]                set this recording to continuously flush to the disk repository
-  -dumpOnExit [bool]          set this recording to dump to disk when the JVM exits
-  -maxAge <time>              how far back data is kept in the disk repository
-  -maxSize <size>             how much data is kept in the disk repository
-  -name <name>                a human-readable name (for example, "My Recording")
+$ java -jar ./prometheus-jfr-exporter-1.0-SNAPSHOT-all.jar --help
+Usage: prometheus-jfr-exporter [options]
+  Options:
+    --destination
+      The recording destination file. Default recording.jfr
+      Default: recording.jfr
+    --disk
+      Write on disk boolean [true/false]
+      Default: true
+    --dumpOnExit
+      Dump to file when exit boolean [true/false]
+      Default: false
+    --eventConfiguration
+      The event Configuration file name.
+    -h, --help
+  * -l, --local
+      The local host for prometheus scraping in [host:port] format
+    --maxAge
+      Max age of a recording. Default "0"
+      Default: 0
+    --maxSize
+      Max size of a recording. Default "0"
+      Default: 0
+    --name
+      The recording name. Default MyRecording
+      Default: MyRecording
+    --password
+      password for remote connection.
+  * -r, --remote
+      The remote host in [host:port] format
+    --username
+      user name for connecting to remote host.
 ```
 
 ### Example
 ```
-$ java -jar ./prometheus-jfr-exporter-1.0-SNAPSHOT-all.jar localhost:9091 0.0.0.0:8080
+$ java -jar ./prometheus-jfr-exporter-1.0-SNAPSHOT-all.jar -r localhost:9091 -l 0.0.0.0:8080
 ```
 
 By default, the exporter endpoint will be running on `http://0.0.0.0:8080/metrics` with [`default.jfc`](./src/main/resources/com/redhat/rhjmc/prometheus_jfr_exporter/default.jfc) event configuration.

@@ -1,15 +1,14 @@
 package com.redhat.rhjmc.prometheus_jfr_exporter;
 
-import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 
 
 
 public class CommandLineArgs {
-    @Parameter(names = {"-r","-remote"}, description = "The remote host in [host:port] format", required = true)
+    @Parameter(names = {"-r","--remote"}, description = "The remote host in [host:port] format", required = true)
     private String remoteHost = null;
 
-    @Parameter(names = {"-l","-local"}, description = "The local host for prometheus scraping in [host:port] format", required = true)
+    @Parameter(names = {"-l","--local"}, description = "The local host for prometheus scraping in [host:port] format", required = true)
     private String prometheusHost = null;
 
     @Parameter(names = "--maxAge", description = "Max age of a recording. Default \"0\"")
@@ -27,13 +26,13 @@ public class CommandLineArgs {
     @Parameter(names = "--eventConfiguration", description = "The event Configuration file name.")
     private String eventConfiguration = null;
 
-    @Parameter(names = "--disk", description = "Write on disk boolean [true/false]")
+    @Parameter(names = "--disk", description = "Write on disk boolean [true/false]", arity = 1)
     private boolean disk = true;
 
-    @Parameter(names = "--dumpOnExit", description = "Dump to file when exit boolean [true/false]")
+    @Parameter(names = "--dumpOnExit", description = "Dump to file when exit boolean [true/false]", arity = 1)
     private boolean dumpOnExit = false;
 
-    @Parameter(names = "--help", help = true)
+    @Parameter(names = {"-h", "--help"}, help = true)
     private boolean help;
 
     @Parameter(names = "--username", description = "user name for connecting to remote host.")

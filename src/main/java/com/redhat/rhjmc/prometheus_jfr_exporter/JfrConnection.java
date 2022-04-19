@@ -18,7 +18,6 @@ import java.net.MalformedURLException;
 public class JfrConnection implements AutoCloseable {
 
 	private static final String URL_FORMAT = "service:jmx:rmi:///jndi/rmi://%s:%d/jmxrmi";
-	public static final int DEFAULT_PORT = 9091;
 
 	private final String host;
 	private final int port;
@@ -26,11 +25,17 @@ public class JfrConnection implements AutoCloseable {
 	private final IConnectionHandle handle;
 	private final IFlightRecorderService service;
 
+
 	public JfrConnection(String host, int port)
+			throws ConnectionException, ServiceNotAvailableException, InterruptedException  {
+		this(host,port, null, null);
+	}
+
+	public JfrConnection(String host, int port, String userName, String password)
 			throws ConnectionException, ServiceNotAvailableException, InterruptedException {
 		this.host = host;
 		this.port = port;
-		this.rjmxConnection = attemptConnect(host, port, 0);
+		this.rjmxConnection = attemptConnect(host, port, 0, userName, password);
 		this.handle = new DefaultConnectionHandle(rjmxConnection, "RJMX Connection", new IConnectionListener[0]);
 		this.service = new FlightRecorderServiceFactory().getServiceInstance(handle);
 	}
@@ -60,7 +65,13 @@ public class JfrConnection implements AutoCloseable {
 		this.disconnect();
 	}
 
+
 	private RJMXConnection attemptConnect(String host, int port, int maxRetry)
+			throws ConnectionException, InterruptedException {
+		return this.attemptConnect(host,port, maxRetry, null, null);
+	}
+
+	private RJMXConnection attemptConnect(String host, int port, int maxRetry, String username, String password)
 			throws ConnectionException, InterruptedException {
 		JMXServiceURL url;
 		try {
@@ -69,7 +80,7 @@ public class JfrConnection implements AutoCloseable {
 			throw new IllegalArgumentException("illegal hostname or port", e);
 		}
 
-		JMXConnectionDescriptor cd = new JMXConnectionDescriptor(url, new InMemoryCredentials(null, null));
+		JMXConnectionDescriptor cd = new JMXConnectionDescriptor(url, new InMemoryCredentials(username, password));
 		ServerDescriptor sd = new ServerDescriptor(null, "Container", null);
 
 		int attempts = 0;
