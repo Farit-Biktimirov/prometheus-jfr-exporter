@@ -47,7 +47,7 @@ JFR Prometheus Exporter accesses recordings using JMX connections. Before runnin
 ### Usage
 
 ```sh
-$ java -jar ./prometheus-jfr-exporter-0.0.1-SNAPSHOT.jar --help
+$ java -jar ./prometheus-jfr-exporter-0.0.1-SNAPSHOT.jar  --help
 Usage: prometheus-jfr-exporter [options]
   Options:
     --destination
@@ -83,7 +83,7 @@ Usage: prometheus-jfr-exporter [options]
 
 ### Example
 ```
-$ java -jar ./prometheus-jfr-exporter-1.0-SNAPSHOT-all.jar -r localhost:9091 -l 0.0.0.0:8080
+$ java -jar ./prometheus-jfr-exporter-0.0.1-SNAPSHOT.jar -r localhost:9091 -l 0.0.0.0:8080
 ```
 
 By default, the exporter endpoint will be running on `http://0.0.0.0:8080/metrics` with [`default.jfc`](./src/main/resources/com/redhat/rhjmc/prometheus_jfr_exporter/default.jfc) event configuration.
