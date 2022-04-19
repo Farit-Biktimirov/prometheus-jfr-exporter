@@ -44,8 +44,6 @@ public class JfrCollector extends Collector { // TODO: implement Collector.Descr
 		}
 	}
 
-
-
 	public List<MetricFamilySamples> doCollect()
 			throws FlightRecorderException, IOException, CouldNotLoadRecordingException, EmptyRecordingException {
 		if (mRecordingService == null) {
@@ -65,73 +63,70 @@ public class JfrCollector extends Collector { // TODO: implement Collector.Descr
 		final List<MetricFamilySamples> metrics = new ArrayList<>();
 
 		groups.forEach( (type, itemIterable) -> {
-			    String metricName = type.getIdentifier().replaceAll("\\.", "_").replaceAll("\\$", ":");
-				Collector.Type metricType = Type.GAUGE;
-				String metricDescription = type.getDescription();
-				Map<String,IMemberAccessor> memberAccessors = type.getAccessorKeys().entrySet().stream()
-						.collect(Collectors.toMap((e)->e.getKey().getIdentifier(),(e)->type.getAccessor(e.getKey())));
-				Map< IAccessorKey<?>, ? extends IDescribable > accessorKeyMap = type.getAccessorKeys();
-			    List<MetricFamilySamples.Sample> samples = new ArrayList<>();
-				try {
-						itemIterable.forEach( itemI -> {
-							itemI.stream().forEach( item -> {
-								List<String> labelNames = new ArrayList<>();
-								List<String> labelValues = new ArrayList<>();
-								List<Double> data = new ArrayList<>();
-								final Long[] timestamps = new Long[1];
-								memberAccessors.forEach((k,v) -> {
-									if (v.getMember(item) instanceof IQuantity) {
-										labelNames.add(k);
-										if (JfrAttributes.END_TIME.getIdentifier().equals(k) ||
-											JfrAttributes.START_TIME.getIdentifier().equals(k)){
-											try {
-												Long value = ((IQuantity)v.getMember(item)).longValueIn(UnitLookup.EPOCH_MS);
-												timestamps[0] = value;
-												labelValues.add(value.toString());
-											} catch (QuantityConversionException e) {
-												e.printStackTrace(System.err);
-											}
-										} else {
-											Double value = ((IQuantity)v.getMember(item)).doubleValue();
-											labelValues.add(value.toString());
-											data.add(value);
-										}
-									} else if (v.getMember(item) instanceof IMCThread) {
-										IMCThread imcThread = (IMCThread) v.getMember(item);
-										labelNames.add("threadName");
-										labelValues.add(imcThread.getThreadName());
-										labelNames.add("threadID");
-										labelValues.add(imcThread.getThreadId().toString());
-										if (imcThread.getThreadGroup() != null ) {
-											labelNames.add("threadGroupName");
-											labelValues.add(imcThread.getThreadGroup().getName());
-										}
-
-										if (imcThread instanceof JfrThread) {
-											JfrThread jfrThread = (JfrThread) imcThread;
-											labelNames.add("osThread");
-											labelValues.add(Long.toString(((IQuantity)jfrThread.getOsThreadId()).longValue()));
-											labelNames.add("osThreadName");
-											labelValues.add(jfrThread.getOsName().toString());
-										}
-									}  else {
-										if (null != v && v.getMember(item) != null) {
-											labelNames.add(k);
-											labelValues.add(v.getMember(item).toString());
-										}
+			String metricName = type.getIdentifier().replaceAll("\\.", "_").replaceAll("\\$", ":");
+			Collector.Type metricType = Type.GAUGE;
+			String metricDescription = type.getDescription();
+			Map<String,IMemberAccessor> memberAccessors = type.getAccessorKeys().entrySet().stream()
+					.collect(Collectors.toMap((e)->e.getKey().getIdentifier(),(e)->type.getAccessor(e.getKey())));
+			List<MetricFamilySamples.Sample> samples = new ArrayList<>();
+			try {
+				itemIterable.forEach( itemI -> {
+					itemI.stream().forEach( item -> {
+						List<String> labelNames = new ArrayList<>();
+						List<String> labelValues = new ArrayList<>();
+						List<Double> data = new ArrayList<>();
+						final Long[] timestamps = new Long[1];
+						memberAccessors.forEach((k,v) -> {
+							if (v.getMember(item) instanceof IQuantity) {
+								labelNames.add(k);
+								if (JfrAttributes.END_TIME.getIdentifier().equals(k) ||
+									JfrAttributes.START_TIME.getIdentifier().equals(k)){
+									try {
+										Long value = ((IQuantity)v.getMember(item)).longValueIn(UnitLookup.EPOCH_MS);
+										timestamps[0] = value;
+										labelValues.add(value.toString());
+									} catch (QuantityConversionException e) {
+										e.printStackTrace(System.err);
 									}
-								});
-								samples.add(new MetricFamilySamples.Sample(metricName, labelNames,labelValues, data.stream().mapToDouble(d -> d).max().orElse(0.0d),
-										timestamps[0]));
-							});
-						});
-						metrics.add(new MetricFamilySamples(metricName, metricType, metricDescription, samples));
-				} catch(Exception ex) {
-					ex.printStackTrace(System.err);
-				}
+								} else {
+									Double value = ((IQuantity)v.getMember(item)).doubleValue();
+									labelValues.add(value.toString());
+									data.add(value);
+								}
+							} else if (v.getMember(item) instanceof IMCThread) {
+								IMCThread imcThread = (IMCThread) v.getMember(item);
+								labelNames.add("threadName");
+								labelValues.add(imcThread.getThreadName());
+								labelNames.add("threadID");
+								labelValues.add(imcThread.getThreadId().toString());
+								if (imcThread.getThreadGroup() != null ) {
+									labelNames.add("threadGroupName");
+									labelValues.add(imcThread.getThreadGroup().getName());
+								}
 
-		     }
-		);
+								if (imcThread instanceof JfrThread) {
+									JfrThread jfrThread = (JfrThread) imcThread;
+									labelNames.add("osThread");
+									labelValues.add(Long.toString(((IQuantity)jfrThread.getOsThreadId()).longValue()));
+									labelNames.add("osThreadName");
+									labelValues.add(jfrThread.getOsName().toString());
+								}
+							}  else {
+								if (null != v && v.getMember(item) != null) {
+									labelNames.add(k);
+									labelValues.add(v.getMember(item).toString());
+								}
+							}
+						});
+						samples.add(new MetricFamilySamples.Sample(metricName, labelNames,labelValues, data.stream().mapToDouble(d -> d).max().orElse(0.0d),
+								timestamps[0]));
+					});
+				});
+				metrics.add(new MetricFamilySamples(metricName, metricType, metricDescription, samples));
+			} catch(Exception ex) {
+				ex.printStackTrace(System.err);
+			}
+		});
 		return metrics;
 	}
 

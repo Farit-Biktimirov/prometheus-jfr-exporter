@@ -50,7 +50,7 @@ public class Main {
 				config.getEventConfiguration(), config.getUserName(), config.getPassword());
 		rs.start();
 
-		HttpService hs = new HttpService(config.httpAddr);
+		HttpService hs = new HttpService(config.getHttpAddr());
 		hs.start();
 
 		JfrCollector collector = new JfrCollector(rs);
@@ -84,14 +84,14 @@ public class Main {
 	}
 
 	private static class Config {
-		String userName;
-		String password;
-		InetSocketAddress jmxAddr;
-		InetSocketAddress httpAddr = new InetSocketAddress("0.0.0.0", 8080);
+		private String userName;
+		private String password;
+		private InetSocketAddress jmxAddr;
+		private InetSocketAddress httpAddr = new InetSocketAddress("0.0.0.0", 8080);
 
-		IMutableConstrainedMap<String> recordingOptions = KnownRecordingOptions.OPTION_DEFAULTS_V2
+		private IMutableConstrainedMap<String> recordingOptions = KnownRecordingOptions.OPTION_DEFAULTS_V2
 				.emptyWithSameConstraints();
-		EventConfiguration eventConfiguration;
+		private EventConfiguration eventConfiguration;
 
 		public void setUserName(String userName) {
 			this.userName = userName;
