@@ -28,16 +28,16 @@ $ mvn install -DskipTests -Dspotbugs.skip=true
 
 - Clone this repository to local.
   ```sh
-  $ git clone https://github.com/tabjy/prometheus-jfr-exporter.git
+  $ git clone  https://github.com/Farit-Biktimirov/prometheus-jfr-exporter.git
   ```
 - Run gradle to build a fat jar.
   ```sh
   $ cd prometheus-jfr-exporter
-  $ ./gradlew shadowJar
+  $ ./mvn -DskipTests clean install
   ```
-- Find the built jar in `build/libs` directory.
+- Find the built jar in `./target` directory.
   ```sh
-  $ ls build/libs/prometheus-jfr-exporter*.jar
+  $ ls ./target/prometheus-jfr-exporter*.jar
   ```
 
 ## Running a Exporter
