@@ -10,7 +10,7 @@ You can obtain a agent jar by downloading a prebuilt artifact or building from s
 
 Download the prebuilt jar from the [release page](https://github.com/tabjy/jfr-prometheus-exporter/releases).
 ```sh
-$ wget https://github.com/tabjy/prometheus-jfr-exporter/releases/latest/download/prometheus-jfr-exporter-1.0-SNAPSHOT-all.jar
+$ wget https://github.com/Farit-Biktimirov/prometheus-jfr-exporter/releases/download/untagged-fb500dfa137aed0596da/prometheus-jfr-exporter-0.0.1-SNAPSHOT.jar
 ```
 
 ### [Option 2] Building from Source
