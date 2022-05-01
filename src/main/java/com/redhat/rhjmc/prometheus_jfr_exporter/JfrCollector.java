@@ -1,7 +1,7 @@
 package com.redhat.rhjmc.prometheus_jfr_exporter;
 
 import io.prometheus.client.Collector;
-import org.openjdk.jmc.common.IDescribable;
+import org.openjdk.jmc.common.IMCThread;
 import org.openjdk.jmc.common.item.*;
 import org.openjdk.jmc.common.unit.IQuantity;
 import org.openjdk.jmc.common.unit.QuantityConversionException;
@@ -10,10 +10,9 @@ import org.openjdk.jmc.flightrecorder.CouldNotLoadRecordingException;
 import org.openjdk.jmc.flightrecorder.JfrAttributes;
 import org.openjdk.jmc.flightrecorder.JfrLoaderToolkit;
 import org.openjdk.jmc.rjmx.services.jfr.FlightRecorderException;
-import org.openjdk.jmc.common.IMCThread;
-import org.openjdk.jmc.flightrecorder.internal.parser.v1.StructTypes.JfrThread;
 
-import java.io.*;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -102,14 +101,6 @@ public class JfrCollector extends Collector { // TODO: implement Collector.Descr
 								if (imcThread.getThreadGroup() != null ) {
 									labelNames.add("threadGroupName");
 									labelValues.add(imcThread.getThreadGroup().getName());
-								}
-
-								if (imcThread instanceof JfrThread) {
-									JfrThread jfrThread = (JfrThread) imcThread;
-									labelNames.add("osThread");
-									labelValues.add(Long.toString(((IQuantity)jfrThread.getOsThreadId()).longValue()));
-									labelNames.add("osThreadName");
-									labelValues.add(jfrThread.getOsName().toString());
 								}
 							}  else {
 								if (null != v && v.getMember(item) != null) {
