@@ -11,10 +11,10 @@ public class CommandLineArgs {
     @Parameter(names = {"-l","--local"}, description = "The local host for prometheus scraping in [host:port] format", required = true)
     private String prometheusHost = null;
 
-    @Parameter(names = "--maxAge", description = "Max age of a recording. Default \"0\"")
-    private String maxAge = "0";
+    @Parameter(names = "--maxAge", description = "Max age of a recording in format \"\\d+ [smhd]{1}\"")
+    private String maxAge = "0 s";
 
-    @Parameter(names = "--maxSize", description = "Max size of a recording. Default \"0\"")
+    @Parameter(names = "--maxSize", description = "Max size of a recording.")
     private String maxSize = "0";
 
     @Parameter(names = "--destination", description = "The recording destination file. Default recording.jfr")

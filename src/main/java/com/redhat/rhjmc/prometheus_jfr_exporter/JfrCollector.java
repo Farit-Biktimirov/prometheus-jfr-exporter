@@ -71,43 +71,43 @@ public class JfrCollector extends Collector { // TODO: implement Collector.Descr
 			try {
 				itemIterable.forEach( itemI -> {
 					itemI.stream().forEach( item -> {
+						TreeMap<String,String> labels = new TreeMap<>();
 						List<String> labelNames = new ArrayList<>();
 						List<String> labelValues = new ArrayList<>();
 						List<Double> data = new ArrayList<>();
 						final Long[] timestamps = new Long[1];
 						memberAccessors.forEach((k,v) -> {
 							if (v.getMember(item) instanceof IQuantity) {
-								labelNames.add(k);
 								if (JfrAttributes.END_TIME.getIdentifier().equals(k) ||
 									JfrAttributes.START_TIME.getIdentifier().equals(k)){
 									try {
 										Long value = ((IQuantity)v.getMember(item)).longValueIn(UnitLookup.EPOCH_MS);
 										timestamps[0] = value;
-										labelValues.add(value.toString());
+										labels.put(k,value.toString());
 									} catch (QuantityConversionException e) {
 										e.printStackTrace(System.err);
 									}
 								} else {
 									Double value = ((IQuantity)v.getMember(item)).doubleValue();
-									labelValues.add(value.toString());
+									labels.put(k,value.toString());
 									data.add(value);
 								}
 							} else if (v.getMember(item) instanceof IMCThread) {
 								IMCThread imcThread = (IMCThread) v.getMember(item);
-								labelNames.add("threadName");
-								labelValues.add(imcThread.getThreadName());
-								labelNames.add("threadID");
-								labelValues.add(imcThread.getThreadId().toString());
+								labels.put("threadName", imcThread.getThreadName());
+								labels.put("threadID", imcThread.getThreadId().toString());
 								if (imcThread.getThreadGroup() != null ) {
-									labelNames.add("threadGroupName");
-									labelValues.add(imcThread.getThreadGroup().getName());
+									labels.put("threadGroupName",imcThread.getThreadGroup().getName());
 								}
 							}  else {
 								if (null != v && v.getMember(item) != null) {
-									labelNames.add(k);
-									labelValues.add(v.getMember(item).toString());
+									labels.put(k,v.getMember(item).toString());
 								}
 							}
+						});
+						labels.forEach((k,v) -> {
+							labelNames.add(k);
+							labelValues.add(v);
 						});
 						samples.add(new MetricFamilySamples.Sample(metricName, labelNames,labelValues, data.stream().mapToDouble(d -> d).max().orElse(0.0d),
 								timestamps[0]));
@@ -126,4 +126,5 @@ public class JfrCollector extends Collector { // TODO: implement Collector.Descr
 			super(msg);
 		}
 	}
+
 }
