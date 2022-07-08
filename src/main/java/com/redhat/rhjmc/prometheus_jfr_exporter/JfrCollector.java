@@ -1,13 +1,8 @@
 package com.redhat.rhjmc.prometheus_jfr_exporter;
 
 import io.prometheus.client.Collector;
-import org.openjdk.jmc.common.item.IAttribute;
-import org.openjdk.jmc.common.item.IItem;
-import org.openjdk.jmc.common.item.IItemCollection;
-import org.openjdk.jmc.common.item.IItemIterable;
-import org.openjdk.jmc.common.item.IMemberAccessor;
-import org.openjdk.jmc.common.item.IType;
-import org.openjdk.jmc.common.item.ItemToolkit;
+import org.openjdk.jmc.common.IMCThread;
+import org.openjdk.jmc.common.item.*;
 import org.openjdk.jmc.common.unit.IQuantity;
 import org.openjdk.jmc.common.unit.QuantityConversionException;
 import org.openjdk.jmc.common.unit.UnitLookup;
@@ -18,11 +13,8 @@ import org.openjdk.jmc.rjmx.services.jfr.FlightRecorderException;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
 
 public class JfrCollector extends Collector { // TODO: implement Collector.Describable?
 	private RecordingService mRecordingService;
@@ -65,70 +57,67 @@ public class JfrCollector extends Collector { // TODO: implement Collector.Descr
 			throw new EmptyRecordingException("Recording has no events recorded");
 		}
 
-		// Duration events might be in different lanes. Group them together first
-		Map<IType<IItem>, List<IItemIterable>> groups = new HashMap<>();
-		for (IItemIterable itemIterable : items) {
-			IType<IItem> key = itemIterable.getType();
-			groups.putIfAbsent(key, new ArrayList<>());
-			List<IItemIterable> list = groups.get(key);
-			list.add(itemIterable);
-		}
+		Map<IType<IItem>, List<IItemIterable>> groups = items.stream().collect(Collectors.groupingBy(IItemIterable::getType, HashMap::new, Collectors.toList()));
 
-		List<MetricFamilySamples> metrics = new ArrayList<>();
+		final List<MetricFamilySamples> metrics = new ArrayList<>();
 
-		IMemberAccessor<?, IItem> endTimeAccessor = ItemToolkit.accessor(JfrAttributes.END_TIME);
-		for (List<IItemIterable> group : groups.values()) {
-			if (group.isEmpty()) {
-				continue;
-			}
-
-			IType<IItem> type = group.get(0).getType();
+		groups.forEach( (type, itemIterable) -> {
 			String metricName = type.getIdentifier().replaceAll("\\.", "_").replaceAll("\\$", ":");
 			Collector.Type metricType = Type.GAUGE;
 			String metricDescription = type.getDescription();
-
+			Map<String,IMemberAccessor> memberAccessors = type.getAccessorKeys().entrySet().stream()
+					.collect(Collectors.toMap((e)->e.getKey().getIdentifier(),(e)->type.getAccessor(e.getKey())));
 			List<MetricFamilySamples.Sample> samples = new ArrayList<>();
-
-			List<IAttribute<?>> attributes = type.getAttributes();
-			for (IItemIterable itemIterable : group) {
-				for (IAttribute<?> attribute : attributes) {
-					IMemberAccessor<?, IItem> accessor = ItemToolkit.accessor(attribute);
-					if (JfrAttributes.START_TIME.getIdentifier().equals(attribute.getIdentifier())) {
-						continue;
-					}
-					if (JfrAttributes.END_TIME.getIdentifier().equals(attribute.getIdentifier())) {
-						continue;
-					}
-					if (JfrAttributes.EVENT_TYPE.getIdentifier().equals(attribute.getIdentifier())) {
-						continue;
-					}
-
-					for (IItem item : itemIterable) {
-						if (!(accessor.getMember(item) instanceof IQuantity)) {
-							break;
-						}
-
-						double data = ((IQuantity) accessor.getMember(item)).doubleValue();
-						if (Double.isNaN(data)) {
-							continue;
-						}
-
-						IQuantity endTime = ((IQuantity) endTimeAccessor.getMember(item));
-						try {
-							samples.add(new MetricFamilySamples.Sample(metricName, Collections.singletonList("attribute"),
-									Collections.singletonList(attribute.getIdentifier()), data,
-									endTime.longValueIn(UnitLookup.EPOCH_MS)));
-						} catch (QuantityConversionException e) {
-							// this should never happen
-							throw new RuntimeException(e);
-						}
-					}
-				}
+			try {
+				itemIterable.forEach( itemI -> {
+					itemI.stream().forEach( item -> {
+						TreeMap<String,String> labels = new TreeMap<>();
+						List<String> labelNames = new ArrayList<>();
+						List<String> labelValues = new ArrayList<>();
+						List<Double> data = new ArrayList<>();
+						final Long[] timestamps = new Long[1];
+						memberAccessors.forEach((k,v) -> {
+							if (v.getMember(item) instanceof IQuantity) {
+								if (JfrAttributes.END_TIME.getIdentifier().equals(k) ||
+									JfrAttributes.START_TIME.getIdentifier().equals(k)){
+									try {
+										Long value = ((IQuantity)v.getMember(item)).longValueIn(UnitLookup.EPOCH_MS);
+										timestamps[0] = value;
+										labels.put(k,value.toString());
+									} catch (QuantityConversionException e) {
+										e.printStackTrace(System.err);
+									}
+								} else {
+									Double value = ((IQuantity)v.getMember(item)).doubleValue();
+									labels.put(k,value.toString());
+									data.add(value);
+								}
+							} else if (v.getMember(item) instanceof IMCThread) {
+								IMCThread imcThread = (IMCThread) v.getMember(item);
+								labels.put("threadName", imcThread.getThreadName());
+								labels.put("threadID", imcThread.getThreadId().toString());
+								if (imcThread.getThreadGroup() != null ) {
+									labels.put("threadGroupName",imcThread.getThreadGroup().getName());
+								}
+							}  else {
+								if (null != v && v.getMember(item) != null) {
+									labels.put(k,v.getMember(item).toString());
+								}
+							}
+						});
+						labels.forEach((k,v) -> {
+							labelNames.add(k);
+							labelValues.add(v);
+						});
+						samples.add(new MetricFamilySamples.Sample(metricName, labelNames,labelValues, data.stream().mapToDouble(d -> d).max().orElse(0.0d),
+								timestamps[0]));
+					});
+				});
+				metrics.add(new MetricFamilySamples(metricName, metricType, metricDescription, samples));
+			} catch(Exception ex) {
+				ex.printStackTrace(System.err);
 			}
-
-			metrics.add(new MetricFamilySamples(metricName, metricType, metricDescription, samples));
-		}
-
+		});
 		return metrics;
 	}
 
@@ -137,4 +126,5 @@ public class JfrCollector extends Collector { // TODO: implement Collector.Descr
 			super(msg);
 		}
 	}
+
 }

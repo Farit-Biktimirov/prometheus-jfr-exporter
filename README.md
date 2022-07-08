@@ -1,4 +1,4 @@
-# Prometheus JFR Exporter [![Build Status](https://travis-ci.org/tabjy/prometheus-jfr-exporter.svg?branch=master)](https://travis-ci.org/tabjy/prometheus-jfr-exporter)
+# Prometheus JFR Exporter
 
 a collector that scrapes JFR events from a JVM target at runtime for Prometheus to use
 
@@ -8,9 +8,9 @@ You can obtain a agent jar by downloading a prebuilt artifact or building from s
 
 ### [Option 1] Using a Prebuilt JAR
 
-Download the prebuilt jar from the [release page](https://github.com/tabjy/jfr-prometheus-exporter/releases).
+Download the prebuilt jar from the [release page](https://github.com/Farit-Biktimirov/prometheus-jfr-exporter/releases).
 ```sh
-$ wget https://github.com/tabjy/prometheus-jfr-exporter/releases/latest/download/prometheus-jfr-exporter-1.0-SNAPSHOT-all.jar
+$ wget https://github.com/Farit-Biktimirov/prometheus-jfr-exporter/releases/download/8.3.0-SNAPSHOT-JMC/prometheus-jfr-exporter-0.0.1-SNAPSHOT.jar
 ```
 
 ### [Option 2] Building from Source
@@ -28,16 +28,16 @@ $ mvn install -DskipTests -Dspotbugs.skip=true
 
 - Clone this repository to local.
   ```sh
-  $ git clone https://github.com/tabjy/prometheus-jfr-exporter.git
+  $ git clone  https://github.com/Farit-Biktimirov/prometheus-jfr-exporter.git
   ```
 - Run gradle to build a fat jar.
   ```sh
   $ cd prometheus-jfr-exporter
-  $ ./gradlew shadowJar
+  $ ./mvn -DskipTests clean install
   ```
-- Find the built jar in `build/libs` directory.
+- Find the built jar in `./target` directory.
   ```sh
-  $ ls build/libs/prometheus-jfr-exporter*.jar
+  $ ls ./target/prometheus-jfr-exporter*.jar
   ```
 
 ## Running a Exporter
@@ -47,22 +47,43 @@ JFR Prometheus Exporter accesses recordings using JMX connections. Before runnin
 ### Usage
 
 ```sh
-$ java -jar ./prometheus-jfr-exporter-1.0-SNAPSHOT-all.jar -h
-Usage of Prometheus JFR exporter:
-  program <[jmxHostname]:[jmxPort]> [[httpHostname]:[httpPort]] [option...]
-
-Options:
-  -eventConfiguration <path>  a location where a .jfc configuration can be found
-  -disk [bool]                set this recording to continuously flush to the disk repository
-  -dumpOnExit [bool]          set this recording to dump to disk when the JVM exits
-  -maxAge <time>              how far back data is kept in the disk repository
-  -maxSize <size>             how much data is kept in the disk repository
-  -name <name>                a human-readable name (for example, "My Recording")
+$ java -jar ./prometheus-jfr-exporter-0.0.1-SNAPSHOT.jar  --help
+Usage: prometheus-jfr-exporter [options]
+  Options:
+    --destination
+      The recording destination file. Default recording.jfr
+      Default: recording.jfr
+    --disk
+      Write on disk boolean [true/false]
+      Default: true
+    --dumpOnExit
+      Dump to file when exit boolean [true/false]
+      Default: false
+    --eventConfiguration
+      The event Configuration file name.
+    -h, --help
+  * -l, --local
+      The local host for prometheus scraping in [host:port] format
+    --maxAge
+      Max age of a recording. Default "0"
+      Default: 0
+    --maxSize
+      Max size of a recording. Default "0"
+      Default: 0
+    --name
+      The recording name. Default MyRecording
+      Default: MyRecording
+    --password
+      password for remote connection.
+  * -r, --remote
+      The remote host in [host:port] format
+    --username
+      user name for connecting to remote host.
 ```
 
 ### Example
 ```
-$ java -jar ./prometheus-jfr-exporter-1.0-SNAPSHOT-all.jar localhost:9091 0.0.0.0:8080
+$ java -jar ./prometheus-jfr-exporter-0.0.1-SNAPSHOT.jar -r localhost:9091 -l 0.0.0.0:8080
 ```
 
 By default, the exporter endpoint will be running on `http://0.0.0.0:8080/metrics` with [`default.jfc`](./src/main/resources/com/redhat/rhjmc/prometheus_jfr_exporter/default.jfc) event configuration.

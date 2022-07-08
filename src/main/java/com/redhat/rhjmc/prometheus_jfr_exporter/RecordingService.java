@@ -25,10 +25,14 @@ public class RecordingService {
 
 	private IQuantity mLastScrape = UnitLookup.EPOCH_MS.quantity(System.currentTimeMillis());
 
-	public RecordingService(
-			InetSocketAddress addr, IMutableConstrainedMap<String> recordingOptions, EventConfiguration eventOptions)
-			throws IOException, InterruptedException, ServiceNotAvailableException {
-		mService = new JfrConnection(addr.getHostString(), addr.getPort()).getService();
+	public RecordingService(InetSocketAddress addr, IMutableConstrainedMap<String> recordingOptions,
+							EventConfiguration eventOptions) throws IOException, InterruptedException, ServiceNotAvailableException {
+		this(addr,recordingOptions,eventOptions,null,null);
+	}
+
+	public RecordingService(InetSocketAddress addr, IMutableConstrainedMap<String> recordingOptions,
+							EventConfiguration eventOptions, String username, String password) throws IOException, InterruptedException, ServiceNotAvailableException {
+		mService = new JfrConnection(addr.getHostString(), addr.getPort(), username, password).getService();
 
 		mRecordingOptions = recordingOptions;
 		mEventOptions = eventOptions.getEventOptions(mService.getDefaultEventOptions().emptyWithSameConstraints());

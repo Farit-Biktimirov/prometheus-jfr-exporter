@@ -25,7 +25,7 @@ public class HttpService {
 		if (mHTTPServer == null) {
 			throw new RuntimeException("HTTP Service already stopped");
 		}
-		mHTTPServer.stop();
+		mHTTPServer.close();
 		mHTTPServer = null;
 	}
 }

@@ -1,5 +1,6 @@
 package com.redhat.rhjmc.prometheus_jfr_exporter;
 
+import com.beust.jcommander.JCommander;
 import org.eclipse.core.runtime.RegistryFactory;
 import org.openjdk.jmc.common.unit.IMutableConstrainedMap;
 import org.openjdk.jmc.common.unit.QuantityConversionException;
@@ -7,142 +8,66 @@ import org.openjdk.jmc.flightrecorder.configuration.internal.KnownRecordingOptio
 import org.openjdk.jmc.flightrecorder.controlpanel.ui.model.EventConfiguration;
 
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.PrintStream;
 import java.net.InetSocketAddress;
 import java.text.ParseException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 public class Main {
-	public static void main(String[] tokens) throws Exception {
+	public static void main(String[] args) throws Exception {
 		System.setProperty("org.openjdk.jmc.common.security.manager", SecurityManager.class.getName());
 		RegistryFactory.setDefaultRegistryProvider(new RegistryProvider());
-
 		Config config = null;
-		try {
-			config = parseCommand(tokens);
-		} catch (IllegalArgumentException e) {
-			e.printStackTrace(System.err);
-			System.err.println();
+			CommandLineArgs cmd = new CommandLineArgs();
+			JCommander jc = JCommander.newBuilder()
+					.addObject(cmd)
+					.build();
+			jc.setProgramName("prometheus-jfr-exporter");
+			try {
+				jc.parse(args);
+				if (cmd.isHelp()) {
+					jc.usage();
+					System.exit(0);
+				}
+				config = new Config();
+				config.setDestination(cmd.getDestination());
+				config.setDisk(Boolean.toString(cmd.isDisk()));
+				config.setDumpOnExit(Boolean.toString(cmd.isDumpOnExit()));
+				config.setEventConfiguration(cmd.getEventConfiguration());
+				config.setMaxAge(cmd.getMaxAge());
+				config.setMaxSize(cmd.getMaxSize());
+				config.setName(cmd.getName());
+				config.setJmxAddr(parseHost(cmd.getRemoteHost()));
+				config.setHttpAddr(parseHost(cmd.getPrometheusHost()));
+				config.setUserName(cmd.getUserName());
+				config.setPassword(cmd.getPassword());
+			} catch (Exception ex) {
+				jc.usage();
+				ex.printStackTrace(System.err);
+				System.exit(1);
+			}
 
-			printHelp(System.err);
-
-			System.exit(1);
-		}
-
-		RecordingService rs = new RecordingService(config.jmxAddr, config.recordingOptions, config.eventConfiguration);
+		RecordingService rs = new RecordingService(config.getJmxAddr(), config.getRecordingOptions(),
+				config.getEventConfiguration(), config.getUserName(), config.getPassword());
 		rs.start();
 
-		HttpService hs = new HttpService(config.httpAddr);
+		HttpService hs = new HttpService(config.getHttpAddr());
 		hs.start();
 
 		JfrCollector collector = new JfrCollector(rs);
 		collector.register();
 	}
 
-	private static Config parseCommand(String[] tokens) {
-		Map<String, String> options = new HashMap<>();
-		List<String> arguments = new ArrayList<>();
-		{
-			String key = null;
-			for (String token : tokens) {
-				if (token.indexOf("-") == 0) {
-					key = token.substring(1);
-					options.put(key, "");
-					continue;
-				}
-
-				if (key != null) {
-					options.put(key, token);
-					key = null;
-					continue;
-				}
-
-				arguments.add(token);
-			}
-		}
-
-		Config config = new Config();
-		InputStream eventConfigurationInput = null;
-
-		// look for help
-		if (options.containsKey("h") || options.containsKey("help")) {
-			printHelp(System.err);
-			System.exit(0);
-		}
-
-		// parsing positional arguments
-		if (arguments.size() < 1) {
-			throw new IllegalArgumentException("Too few arguments");
-		}
-
-		if (arguments.size() > 2) {
-			throw new IllegalArgumentException("Too many arguments");
-		}
-
-		// parsing jmx "hostname:port"
-		config.jmxAddr = parseHost(arguments.get(0), "localhost", JfrConnection.DEFAULT_PORT);
-
-		// parsing http "hostname:port"
-		if (arguments.size() == 2) {
-			config.httpAddr = parseHost(arguments.get(1), "0.0.0.0", 8080);
-		}
-
-		// parsing options
-		for (Map.Entry<String, String> option : options.entrySet()) {
-			String key = option.getKey();
-			String value = option.getValue();
-			switch (option.getKey()) {
-			case "disk":
-			case "dumpOnExit":
-				if (value == null || "".equals(value)) {
-					value = "true";
-				}
-			case "maxAge":
-			case "maxSize":
-			case "name":
-				try {
-					config.recordingOptions.putPersistedString(key, value);
-				} catch (QuantityConversionException e) {
-					throw new IllegalArgumentException("Invalid option argument for " + key + ": " + value, e);
-				}
-				break;
-			case "eventConfiguration":
-				try {
-					eventConfigurationInput = new FileInputStream(value);
-				} catch (FileNotFoundException e) {
-					throw new IllegalArgumentException("Event configuration not found: " + value, e);
-				}
-				break;
-			default:
-				throw new IllegalArgumentException("Unrecognized option: " + key);
-			}
-		}
-
-		if (eventConfigurationInput == null) {
-			eventConfigurationInput = Main.class.getResourceAsStream("default.jfc");
-		}
-		try {
-			config.eventConfiguration = new EventConfiguration(EventConfiguration.createModel(eventConfigurationInput));
-		} catch (IOException | ParseException e) {
-			throw new IllegalArgumentException("Invalid event configuration input", e);
-		}
-
-		return config;
+	private static InetSocketAddress parseHost(String hostPort) {
+		return parseHost(hostPort,null,null);
 	}
 
-	private static InetSocketAddress parseHost(String host, String defaultHostname, int defaultPort) {
+	private static InetSocketAddress parseHost(String hostPort, String defaultHostname, Integer defaultPort) {
 		String hostname = defaultHostname;
-		int port = defaultPort;
+		Integer port = defaultPort;
 
-		String[] hostnamePort = host.split(":");
+		String[] hostnamePort = hostPort.split(":");
 		if (hostnamePort.length > 2) {
-			throw new IllegalArgumentException("invalid host: " + host);
+			throw new IllegalArgumentException("invalid host: " + hostPort);
 		}
 		if (hostnamePort[0].length() > 0) {
 			hostname = hostnamePort[0];
@@ -151,32 +76,94 @@ public class Main {
 			try {
 				port = Integer.parseInt(hostnamePort[1]);
 			} catch (NumberFormatException e) {
-				throw new IllegalArgumentException("invalid host: " + host);
+				throw new IllegalArgumentException("invalid port: " + port);
 			}
 		}
 
 		return new InetSocketAddress(hostname, port);
 	}
 
-	private static void printHelp(PrintStream ps) {
-		ps.println("Usage of Prometheus JFR exporter:");
-		ps.println("  program <[jmxHostname]:[jmxPort]> [[httpHostname]:[httpPort]] [option...]");
-		ps.println();
-		ps.println("Options:");
-		ps.println("  -eventConfiguration <path>  a location where a .jfc configuration can be found");
-		ps.println("  -disk [bool]                set this recording to continuously flush to the disk repository");
-		ps.println("  -dumpOnExit [bool]          set this recording to dump to disk when the JVM exits");
-		ps.println("  -maxAge <time>              how far back data is kept in the disk repository");
-		ps.println("  -maxSize <size>             how much data is kept in the disk repository");
-		ps.println("  -name <name>                a human-readable name (for example, \"My Recording\")");
-	}
+	private static class Config {
+		private String userName;
+		private String password;
+		private InetSocketAddress jmxAddr;
+		private InetSocketAddress httpAddr = new InetSocketAddress("0.0.0.0", 8080);
 
-	static class Config {
-		InetSocketAddress jmxAddr;
-		InetSocketAddress httpAddr = new InetSocketAddress("0.0.0.0", 8080);
-
-		IMutableConstrainedMap<String> recordingOptions = KnownRecordingOptions.OPTION_DEFAULTS_V2
+		private IMutableConstrainedMap<String> recordingOptions = KnownRecordingOptions.OPTION_DEFAULTS_V2
 				.emptyWithSameConstraints();
-		EventConfiguration eventConfiguration;
+		private EventConfiguration eventConfiguration;
+
+		public void setUserName(String userName) {
+			this.userName = userName;
+		}
+
+		public void setPassword(String password) {
+			this.password = password;
+		}
+
+		public String getUserName() {
+			return userName;
+		}
+
+		public String getPassword() {
+			return password;
+		}
+
+		public InetSocketAddress getJmxAddr() {
+			return jmxAddr;
+		}
+
+		public InetSocketAddress getHttpAddr() {
+			return httpAddr;
+		}
+
+		public IMutableConstrainedMap<String> getRecordingOptions() {
+			return recordingOptions;
+		}
+
+		public EventConfiguration getEventConfiguration() {
+			return eventConfiguration;
+		}
+
+		void setJmxAddr(InetSocketAddress jmxAddr) {
+			this.jmxAddr = jmxAddr;
+		}
+
+		void setHttpAddr(InetSocketAddress httpAddr) {
+			this.httpAddr = httpAddr;
+		}
+
+		void setDisk(String value) throws QuantityConversionException {
+			this.recordingOptions.putPersistedString("disk", value);
+		}
+
+		void setDumpOnExit(String value) throws QuantityConversionException {
+			this.recordingOptions.putPersistedString("dumpOnExit", value);
+		}
+
+		void setMaxAge(String value) throws QuantityConversionException {
+			if (!value.equals("0")) this.recordingOptions.putPersistedString("maxAge", value);
+		}
+
+		void setMaxSize(String value) throws QuantityConversionException {
+			if (!value.equals("0")) this.recordingOptions.putPersistedString("maxSize", value);
+		}
+
+		void setDestination(String value) throws QuantityConversionException {
+			this.recordingOptions.putPersistedString("destination", value);
+		}
+
+		void setName(String value) throws QuantityConversionException {
+			this.recordingOptions.putPersistedString("name", value);
+		}
+
+		void setEventConfiguration(String fileName) throws IOException, ParseException {
+			if (fileName != null || !fileName.isEmpty()) {
+				this.eventConfiguration = new EventConfiguration(EventConfiguration.createModel(new FileInputStream(fileName)));
+			} else {
+				this.eventConfiguration = new EventConfiguration(EventConfiguration.createModel(Main.class
+						.getResourceAsStream("default.jfc")));
+			}
+		}
 	}
 }
